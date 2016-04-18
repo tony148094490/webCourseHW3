@@ -26,10 +26,10 @@ class Handler(webapp2.RequestHandler):
 		self.write(self.render_str(template, **kw))
 
 
-class MainPage(Handler):
+class BlogHandler(Handler):
 	def get(self):
 		topTenPosts = ndb.gql(
-			"SELECT * FROM Post ORDER BY createdDate DESC LIMIT 10").fetch()
+			"SELECT * FROM Post ORDER BY createdDate ASC LIMIT 10").fetch()
 		self.render("landing_page.html", posts=topTenPosts)
 
 class NewPostHandler(Handler):
@@ -81,8 +81,15 @@ class PostHandler(Handler):
 					createdDate=createdDate,
 					content=content,
 					postId=postId)
+class HomePageHandler(Handler):
+	def get(self):
+		blog="/blog"
+		self.render("homepage.html",
+					blog=blog)
 
-app = webapp2.WSGIApplication([('/blog', MainPage),
+
+app = webapp2.WSGIApplication([('/', HomePageHandler),
+							   ('/blog', BlogHandler),
 							   ('/blog/newpost', NewPostHandler),
 							   ('/blog/(\d+)', PostHandler),
 								],
