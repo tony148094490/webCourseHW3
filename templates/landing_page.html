@@ -1,5 +1,17 @@
+{% extends "base.html" %}
 {% block content %}
 <form action="/blog" method="get">
-	something
+		{% if posts %}
+			{% for post in posts %}
+				<li>
+					<a href="/blog/{{post.key.id()}}">{{post.subject}}</a>
+					Posted on {{post.createdDate}}
+					<br>
+					{{post.content }}
+				</li>
+				<br>
+			{% endfor %}
+		{% endif %}
+
 </form>
 {% endblock %}

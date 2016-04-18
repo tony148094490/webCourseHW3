@@ -3,9 +3,16 @@ import datetime
 import jinja2
 import webapp2
 
+from google.appengine.ext import ndb
+
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir),
 								autoescape = True)
+
+class Post(ndb.Model):
+	subject = ndb.StringProperty(required = True)
+	content = ndb.TextProperty(required = True)
+	createdDate = ndb.DateProperty(auto_now_add = True)
 
 class Handler(webapp2.RequestHandler):
 	def write(self, *a, **kw):
@@ -21,48 +28,62 @@ class Handler(webapp2.RequestHandler):
 
 class MainPage(Handler):
 	def get(self):
+		topTenPosts = ndb.gql(
+			"SELECT * FROM Post ORDER BY createdDate DESC LIMIT 10").fetch()
+		self.render("landing_page.html", posts=topTenPosts)
 
-		# get top ten posts from DB
-
-		self.render("landing_page.html")
-
-		# history = self.request.get_all("titles")
-		# if history:
-		# 	output_history = ""
-		# 	for title in history:
-		# 		output_hidden += hidden_html % title
-		# 		output_history += item_html % title
-		# 	output_shopping = 
-
-class NewPost(Handler):
+class NewPostHandler(Handler):
 	def get(self):
-		self.render("new_post.html",subject = "", content = "")
+		self.render("new_post.html",
+					subject="",
+					subjectError="",
+					content="",
+					contentError="")
 
 	def post(self):
 		subject = self.request.get("subject")
+		subjectError = ''
 		content = self.request.get("content")
-		postDate = datetime.date.today()
+		contentError = ''
 
-		# Do verification
+		if subject and content:
+			newPost = Post(subject=subject,
+						   content=content)
+			newPostKey = newPost.put()
+			postId = newPostKey.id()
+			self.redirect("/blog/" + str(postId))
 
-		# store in DB w/ (title=title,content=content,postDate=postDate)
-		# Generate an ID
+		elif not subject and not content:
+			subjectError = 'Subject can not be empty!'
+			contentError = 'Content can not be empty!'
+		elif not subject:
+			subjectError = 'Subject can not be empty!'
+		else:
+			contentError = 'Content can not be empty!'
 
-		postId = '1001'
+		self.render("new_post.html",subject=subject,subjectError=subjectError,
+			content=content,contentError=contentError)
 
-		self.redirect("/blog/" + postId)
-		
-class Post(Handler):
+class PostHandler(Handler):
 	def get(self, url):
-		postId = url
+		postId = long(url)
 
-		# Query DB with Id = postId
-		# Get title, content and date
+		postKey = ndb.Key('Post', postId)
 
-		self.render("post.html", subject=path, postDate=postDate, content=content)
+		post = postKey.get()
+
+		subject = post.subject
+		content = post.content
+		createdDate = post.createdDate
+
+		self.render("post.html",
+					subject=subject,
+					createdDate=createdDate,
+					content=content,
+					postId=postId)
 
 app = webapp2.WSGIApplication([('/blog', MainPage),
-							   ('/blog/newpost', NewPost),
-							   ('/blog/(\d+)', Post),
+							   ('/blog/newpost', NewPostHandler),
+							   ('/blog/(\d+)', PostHandler),
 								],
 								debug=True)
